@@ -22,6 +22,7 @@ import teamAlphaWorkbook from "../TEAM_ALPHA PROJECT- Financial Performance & Re
 
 const linkedInUrl =
   "https://www.linkedin.com/in/ndifreke-enefiok-jacob-?utm_source=share_via&utm_content=profile&utm_medium=member_ios";
+const githubUrl = "https://github.com/analystdestiny27";
 const whatsappUrl = "https://wa.me/2347033346833";
 
 const imageProjects = {
@@ -975,7 +976,7 @@ function ProjectsPage() {
                 fileName="Screenshot 2026-11-09 201812.png"
                 projectId="superstore-workbook"
                 src={superstoreScreenshot}
-                title="SuperStore dashboard screenshot"
+                title="Data cleaning on Excel"
               />
             </div>
           </section>
@@ -1225,6 +1226,9 @@ function ContactPage() {
             </a>
             <a href={linkedInUrl} rel="noopener" target="_blank">
               LinkedIn profile <ArrowIcon diagonal />
+            </a>
+            <a href={githubUrl} rel="noopener noreferrer" target="_blank">
+              GitHub profile <ArrowIcon diagonal />
             </a>
           </div>
         </div>
