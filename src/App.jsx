@@ -24,6 +24,7 @@ const linkedInUrl =
   "https://www.linkedin.com/in/ndifreke-enefiok-jacob-?utm_source=share_via&utm_content=profile&utm_medium=member_ios";
 const githubUrl = "https://github.com/analystdestiny27";
 const whatsappUrl = "https://wa.me/2347033346833";
+const ADMIN_PASSWORD = "ndifreke2026";
 
 const imageProjects = {
   "petroll-overview": {
@@ -388,6 +389,9 @@ function SiteLayout() {
             <a href="mailto:ndifrekeenefiok27@gmail.com">
               Email me <ArrowIcon diagonal />
             </a>
+            <Link className="footer-admin-link" to="/admin">
+              Admin <ArrowIcon diagonal />
+            </Link>
           </div>
         </div>
       </footer>
@@ -867,6 +871,56 @@ function ProjectCard() {
   );
 }
 
+function RecentProjectsSection() {
+  const [projects, setProjects] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+
+  // Works on Vercel too — /uploads paths come from the same origin as the frontend.
+  const apiBase = "";
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${apiBase}/api/projects`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) setProjects(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (!loaded || projects.length === 0) return null;
+
+  return (
+    <section aria-labelledby="recent-projects-title" className="evidence-group">
+      <div className="evidence-group-heading">
+        <span>04</span>
+        <div>
+          <h3 id="recent-projects-title">Recent projects</h3>
+          <p>The latest additions to the portfolio.</p>
+        </div>
+      </div>
+      <div className="evidence-grid">
+        {projects.map((project) => (
+          <EvidenceFigure
+            detail={project.category}
+            fileName={project.title}
+            key={project.id}
+            projectId={`recent-${project.id}`}
+            src={project.image}
+            title={project.title}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function ProjectsPage() {
   return (
     <div className="inner-page">
@@ -1010,6 +1064,8 @@ function ProjectsPage() {
               />
             </div>
           </section>
+
+          <RecentProjectsSection />
         </div>
       </section>
     </div>
@@ -1247,6 +1303,186 @@ function ContactPage() {
   );
 }
 
+function AdminPage() {
+  const [password, setPassword] = useState("");
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [projects, setProjects] = useState([]);
+  const [form, setForm] = useState({ title: "", category: "", summary: "", link: "" });
+  const [image, setImage] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  const loadProjects = () => {
+    fetch("/api/projects")
+      .then((res) => res.json())
+      .then((data) => setProjects(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    if (loggedIn) loadProjects();
+  }, [loggedIn]);
+
+  if (!loggedIn) {
+    return (
+      <section className="page-wrap" style={{ maxWidth: 480, margin: "4rem auto" }}>
+        <Eyebrow>Admin access</Eyebrow>
+        <h1>Sign in to add projects</h1>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (password === ADMIN_PASSWORD) {
+              setLoggedIn(true);
+              setError("");
+            } else {
+              setError("Incorrect password.");
+            }
+          }}
+        >
+          <input
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder="Admin password"
+            style={{ width: "100%", padding: "0.75rem", marginBottom: "1rem" }}
+            type="password"
+            value={password}
+          />
+          {error && <p style={{ color: "crimson" }}>{error}</p>}
+          <button className="button button-dark" type="submit">Enter</button>
+        </form>
+      </section>
+    );
+  }
+
+  const submitProject = async (event) => {
+    event.preventDefault();
+    if (!form.title || !image) {
+      setMessage("A title and an image are both required.");
+      return;
+    }
+    setSaving(true);
+    setMessage("");
+    const body = new FormData();
+    Object.entries(form).forEach(([key, value]) => body.append(key, value));
+    body.append("image", image);
+
+    try {
+      const res = await fetch("/api/projects", {
+        headers: { Authorization: `Bearer ${ADMIN_PASSWORD}` },
+        method: "POST",
+        body,
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Could not save the project.");
+      }
+      setForm({ title: "", category: "", summary: "", link: "" });
+      setImage(null);
+      setMessage("Project added — it now appears in Recent projects on the Projects page.");
+      loadProjects();
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteProject = async (id) => {
+    const res = await fetch(`/api/projects/${id}`, {
+      headers: { Authorization: `Bearer ${ADMIN_PASSWORD}` },
+      method: "DELETE",
+    });
+    if (res.ok) loadProjects();
+  };
+
+  const fieldStyle = { width: "100%", padding: "0.75rem", marginBottom: "1rem" };
+
+  return (
+    <section className="page-wrap" style={{ maxWidth: 640, margin: "3rem auto" }}>
+      <Eyebrow>Admin · Recent projects</Eyebrow>
+      <h1>Add a recent project</h1>
+      <p>Fill in the details and upload an image. It appears immediately in the Projects section.</p>
+      <form onSubmit={submitProject}>
+        <input
+          onChange={(event) => setForm({ ...form, title: event.target.value })}
+          placeholder="Project title (required)"
+          style={fieldStyle}
+          value={form.title}
+        />
+        <input
+          onChange={(event) => setForm({ ...form, category: event.target.value })}
+          placeholder="Category, e.g. Power BI · Dashboard"
+          style={fieldStyle}
+          value={form.category}
+        />
+        <textarea
+          onChange={(event) => setForm({ ...form, summary: event.target.value })}
+          placeholder="Short summary"
+          rows={3}
+          style={fieldStyle}
+          value={form.summary}
+        />
+        <input
+          onChange={(event) => setForm({ ...form, link: event.target.value })}
+          placeholder="Optional link"
+          style={fieldStyle}
+          value={form.link}
+        />
+        <input
+          accept="image/*"
+          capture="environment"
+          onChange={(event) => setImage(event.target.files[0] || null)}
+          style={{ marginBottom: "1rem" }}
+          type="file"
+        />
+        {message && <p>{message}</p>}
+        <button className="button button-dark" disabled={saving} type="submit">
+          {saving ? "Saving…" : "Add project"}
+        </button>
+      </form>
+
+      <h2 style={{ marginTop: "2.5rem" }}>Existing recent projects ({projects.length})</h2>
+      <ul style={{ listStyle: "none", padding: 0 }}>
+        {projects.map((project) => (
+          <li
+            key={project.id}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: "0.75rem",
+              marginBottom: "0.75rem",
+            }}
+          >
+            <img
+              alt=""
+              height={48}
+              src={project.image}
+              style={{
+                objectFit: "cover",
+                borderRadius: 4,
+                maxWidth: 64,
+                height: "auto",
+              }}
+              width={64}
+            />
+            <strong style={{ flex: "1 1 120px", wordBreak: "break-word" }}>
+              {project.title}
+            </strong>
+            <button
+              className="text-link"
+              onClick={() => deleteProject(project.id)}
+              type="button"
+            >
+              Delete
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function NotFoundPage() {
   return (
     <section className="not-found page-wrap">
@@ -1258,6 +1494,13 @@ function NotFoundPage() {
       </h1>
       <Link className="button button-dark" to="/">
         Back to home <ArrowIcon />
+      </Link>
+      <Link
+        className="button button-outline"
+        style={{ marginLeft: "0.75rem" }}
+        to="/admin"
+      >
+        Admin <ArrowIcon diagonal />
       </Link>
     </section>
   );
@@ -1281,6 +1524,7 @@ export default function App() {
             path="projects/evidence/:evidenceId"
           />
           <Route element={<ContactPage />} path="contact" />
+          <Route element={<AdminPage />} path="admin" />
           <Route element={<NotFoundPage />} path="*" />
         </Route>
       </Routes>
